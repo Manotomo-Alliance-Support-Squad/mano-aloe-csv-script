@@ -7,22 +7,27 @@ def help():
     print("[command] \n")
 
 def parse_csv(csv_path, server):
+    i=0
+    entrynames = []
     with open(csv_path) as csv_f:
         csv_r = csv.reader(csv_f, delimiter=',')
         for row in csv_r:
-            print(row)
-            send_entry(server, row)
+            if i>0:
+                print(row)
+                send_entry(server, row, entrynames)
+            else:
+                entrynames = row
+                i+=1
 
-def send_entry(server, entry):
+def send_entry(server, entry, entrynames):
     url = server + "/api/messages"
     postdata = {
-            "original_message": str(entry[0]),
-            "translated_english_message" : str(entry[1]),
-            "translated_japanese_message": str(entry[2]),
-            "region": str(entry[3]),
-            "username": str(entry[4])}
+            entrynames[0] : str(entry[0]),
+            entrynames[1] : str(entry[1]),
+            entrynames[2] : str(entry[2]),
+            entrynames[3] : str(entry[3]),
+            entrynames[4] : str(entry[4])}
     res = requests.post(url, json = postdata)
-
     print(res)
     print(res.status_code)
 
