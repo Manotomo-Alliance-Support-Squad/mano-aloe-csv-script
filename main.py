@@ -25,8 +25,12 @@ def send_entry(server, entry, entrynames):
         entrynames[1]: str(entry[1]),
         entrynames[2]: str(entry[2]),
         entrynames[3]: str(entry[3]),
-        entrynames[4]: str(entry[4])}
+        entrynames[4]: str(entry[4])
+    }
     res = requests.post(url, json=postdata)
+    # Not super actionable if we have failures.
+    # Should probably add in retry or mechanism to drop
+    # a local file with the failed dataset.
     print(res)
     print(res.status_code)
 
