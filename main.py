@@ -1,14 +1,9 @@
+import argparse
 import csv
-import sys
-import getopt
 import requests
 
 
-def help():
-    print("[command] \n")
-
-
-def parse_csv(csv_path, server):
+def parse_csv(csv_path, server, dry_run=False):
     i = 0
     entrynames = []
     with open(csv_path) as csv_f:
@@ -16,7 +11,8 @@ def parse_csv(csv_path, server):
         for row in csv_r:
             if i > 0:
                 print(row)
-                send_entry(server, row, entrynames)
+                if server and not dry_run:
+                    send_entry(server, row, entrynames)
             else:
                 entrynames = row
                 i += 1
@@ -36,30 +32,28 @@ def send_entry(server, entry, entrynames):
 
 
 def main(argv):
-    csv_path = ""
-    server = ""
-    try:
-        opts, args = getopt.getopt(argv, "hi:o:")
-    except getopt.GetoptError:
-        print("Incorrect usage of parameters")
-        help()
-        sys.exit(1)
-    if not opts:
-        print("Arguments are required to run")
-
-    for opt, arg in opts:
-        if opt == '-h':
-            help()
-        elif opt == '-i':
-            csv_path = arg
-        elif opt == '-o':
-            server = arg
-
-    if not server or not csv_path:
-        print("a server IP and a csv file is required")
-        sys.exit(1)
-    parse_csv(csv_path, server)
+    if argv.dry_run:
+        print("\nThis is a dry run. No data will be loaded to server whether "
+              "a server_address has been provided or not.\n")
+    elif not argv.server_address:
+        print("\nWARNING: A server address was not provided in args. "
+              "Only printing results locally. Use the -h arg if you don't "
+              "know what this means.\n")
+    parse_csv(argv.csv_path, argv.server_address, argv.dry_run)
 
 
 if __name__ == "__main__":
-    main(sys.argv[1:])
+    parser = argparse.ArgumentParser(
+        description='Parse a specifically formatted CSV')
+    parser.add_argument(
+        '--csv_path', '-c', dest='csv_path', required=True,
+        help='the path to the csv file')
+    parser.add_argument(
+        '--dry_run', '-d', dest='dry_run', action='store_true',
+        help='performs a dry run locally even when provided '
+        'with server_address')
+    parser.add_argument(
+        '--server', '-s', dest='server_address', required=False,
+        help='the server address for the results to be uploaded')
+    args = parser.parse_args()
+    main(args)
