@@ -23,25 +23,26 @@ def parse_csv(csv_path, server, dry_run=False):
                     server = '0.0.0.0'
                 res_code, postdata = send_entry(
                     server, row, entrynames, dry_run)
-                if res_code != 200:  # STATUS CODE not OK
+                if res_code != 200 and res_code != 201:  # STATUS CODE not OK
                     row.extend([postdata, res_code])
                     failed_entries.append(row)
             else:
                 entrynames = row
-                row.extend(['postdata', 'response code'])
-                failed_entries.append(row)
+                #row.extend(['postdata', 'response code'])
+                #failed_entries.append(row)
                 i += 1
     return failed_entries
 
 
 def send_entry(server, entry, entrynames, dry_run):
-    url = server + "/api/messages"
+    url = server
     postdata = {
         entrynames[0]: str(entry[0]),
         entrynames[1]: str(entry[1]),
         entrynames[2]: str(entry[2]),
-        entrynames[3]: str(entry[3]),
-        entrynames[4]: str(entry[4])
+        entrynames[3]: str(entry[3])
+        #entrynames[4]: str(entry[4])
+        #TODO: Add a way to specify the columns we are sending. Sometimes the server will complain if we send an undefined column
     }
     if not dry_run:
         res = requests.post(url, json=postdata)
