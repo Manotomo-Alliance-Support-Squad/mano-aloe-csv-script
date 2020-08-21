@@ -63,7 +63,7 @@ def main(argv):
               "know what this means.\n")
     failed_entries = parse_csv(
         argv.csv_path, argv.server_address, argv.dry_run)
-    if failed_entries:
+    if len(failed_entries) > 1:
         write_fail_csv(failed_entries, argv.fail_csv_path)
 
 
