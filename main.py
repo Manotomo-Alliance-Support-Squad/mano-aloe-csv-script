@@ -63,7 +63,14 @@ def main(argv):
               "know what this means.\n")
     failed_entries = parse_csv(
         argv.csv_path, argv.server_address, argv.dry_run)
-    if len(failed_entries) > 1:
+
+    total_failed_entries = len(failed_entries)
+    if total_failed_entries > 1:
+        print(
+            "\nTHERE WERE {} ENTRIES THAT FAILED TO BE PROCESSED. "
+            "PLEASE SEE \"{}\" TO DETERMINE IF THERE'S ANY DATA REMEDIATION "
+            "THAT'S NEEDED.\n".format(
+                total_failed_entries, argv.fail_csv_path))
         write_fail_csv(failed_entries, argv.fail_csv_path)
 
 
