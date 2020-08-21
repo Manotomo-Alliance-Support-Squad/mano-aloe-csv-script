@@ -1,4 +1,4 @@
 username,original_message,translated_japanese_message,translated_english_message,region
 username1,hello,hello2,hello3,US
-username2,world,world2,world3,USA
-username3,"hello, world","hello, world 2","hello, world 3",United States
+username2,world,world2,world3,US
+username3,"hello, world","hello, world 2","hello, world 3",US
