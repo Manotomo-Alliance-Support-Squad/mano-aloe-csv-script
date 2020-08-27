@@ -2,6 +2,12 @@ import argparse
 import csv
 import requests
 
+def auth(username, password, server):
+    print(username)
+    postdata = {'username':username, 'password':password}
+    res = requests.post(server, json=postdata)
+    print(res.text)
+    return res.json()
 
 def write_fail_csv(entries, path):
     with open(path, 'w') as csv_f:
@@ -9,7 +15,7 @@ def write_fail_csv(entries, path):
         csv_w.writerows(entries)
 
 
-def parse_csv(csv_path, server, dry_run=False):
+def parse_csv(csv_path, server, authkey, dry_run=False):
     i = 0
     entrynames = []
     failed_entries = []
@@ -22,7 +28,7 @@ def parse_csv(csv_path, server, dry_run=False):
                     dry_run = True
                     server = '0.0.0.0'
                 res_code, postdata = send_entry(
-                    server, row, entrynames, dry_run)
+                    server, row, entrynames, dry_run, authkey)
                 if res_code != 200 and res_code != 201:  # STATUS CODE not OK
                     row.extend([postdata, res_code])
                     failed_entries.append(row)
@@ -34,18 +40,20 @@ def parse_csv(csv_path, server, dry_run=False):
     return failed_entries
 
 
-def send_entry(server, entry, entrynames, dry_run):
+def send_entry(server, entry, entrynames, dry_run, authkey):
     url = server
     postdata = {
-        entrynames[0]: str(entry[0]),
+        #entrynames[0]: str(entry[0]),
         entrynames[1]: str(entry[1]),
         entrynames[2]: str(entry[2]),
-        entrynames[3]: str(entry[3])
-        #entrynames[4]: str(entry[4])
+        entrynames[3]: str(entry[3]),
+        entrynames[4]: str(entry[4])
         #TODO: Add a way to specify the columns we are sending. Sometimes the server will complain if we send an undefined column
     }
     if not dry_run:
-        res = requests.post(url, json=postdata)
+        #auth_headers = "Authorization: JWT " + authkey['access_token']
+        auth_headers = {'Authorization': 'JWT ' + authkey['access_token']}
+        res = requests.post(url, json=postdata, headers=auth_headers)
         res_code = res.status_code
         print(res_code, res)
     else:
@@ -62,8 +70,9 @@ def main(argv):
         print("\nWARNING: A server address was not provided in args. "
               "Only printing results locally. Use the -h arg if you don't "
               "know what this means.\n")
+    authkey = auth(argv.auth_username, argv.auth_password, argv.auth_api)
     failed_entries = parse_csv(
-        argv.csv_path, argv.server_address, argv.dry_run)
+        argv.csv_path, argv.server_address, authkey, argv.dry_run)
 
     total_failed_entries = len(failed_entries)
     if total_failed_entries > 1:
@@ -92,5 +101,14 @@ if __name__ == "__main__":
     parser.add_argument(
         '--server', '-s', dest='server_address', required=False,
         help='the server address for the results to be uploaded')
+    parser.add_argument(
+        '--user', '-u', dest='auth_username', required=True,
+        help='the username to log in to the api with')
+    parser.add_argument(
+        '--pass', '-p', dest='auth_password', required=True,
+        help='the password to log in to the api with')
+    parser.add_argument(
+        '--auth', '-a', dest='auth_api', required=True,
+        help='the auth api')
     args = parser.parse_args()
     main(args)
