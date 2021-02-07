@@ -2,12 +2,14 @@ import argparse
 import csv
 import requests
 
+
 def auth(username, password, server):
     print(username)
-    postdata = {'username':username, 'password':password}
+    postdata = {'username': username, 'password': password}
     res = requests.post(server, json=postdata)
     print(res.text)
     return res.json()
+
 
 def write_fail_csv(entries, path):
     with open(path, 'w') as csv_f:
@@ -34,8 +36,8 @@ def parse_csv(csv_path, server, authkey, dry_run=False):
                     failed_entries.append(row)
             else:
                 entrynames = row
-                #row.extend(['postdata', 'response code'])
-                #failed_entries.append(row)
+                # row.extend(['postdata', 'response code'])
+                # failed_entries.append(row)
                 i += 1
     return failed_entries
 
@@ -43,15 +45,14 @@ def parse_csv(csv_path, server, authkey, dry_run=False):
 def send_entry(server, entry, entrynames, dry_run, authkey):
     url = server
     postdata = {
-        #entrynames[0]: str(entry[0]),
+        # entrynames[0]: str(entry[0]),
         entrynames[1]: str(entry[1]),
         entrynames[2]: str(entry[2]),
         entrynames[3]: str(entry[3]),
         entrynames[4]: str(entry[4])
-        #TODO: Add a way to specify the columns we are sending. Sometimes the server will complain if we send an undefined column
+        # TODO: Add a way to specify the columns we are sending. Sometimes the server will complain if we send an undefined column
     }
     if not dry_run:
-        #auth_headers = "Authorization: JWT " + authkey['access_token']
         auth_headers = {'Authorization': 'JWT ' + authkey['access_token']}
         res = requests.post(url, json=postdata, headers=auth_headers)
         res_code = res.status_code
