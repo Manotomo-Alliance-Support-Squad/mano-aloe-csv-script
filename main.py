@@ -17,28 +17,32 @@ def write_fail_csv(entries, path):
         csv_w.writerows(entries)
 
 
-def parse_csv(csv_path, server, authkey, dry_run=False):
-    i = 0
-    entrynames = []
-    failed_entries = []
+def parse_csv_to_memory(csv_path):
+    """This probably doesn't need to be a function but it's separated for
+    testability and to do additional functionality when parsing CSVs.
+    """
     with open(csv_path) as csv_f:
         csv_r = csv.reader(csv_f, delimiter=',')
-        for row in csv_r:
-            if i > 0:
-                # Print dry run results if no server address
-                if not server:
-                    dry_run = True
-                    server = '0.0.0.0'
-                res_code, postdata = send_entry(
-                    server, row, entrynames, dry_run, authkey)
-                if res_code != 200 and res_code != 201:  # STATUS CODE not OK
-                    row.extend([postdata, res_code])
-                    failed_entries.append(row)
-            else:
-                entrynames = row
-                # row.extend(['postdata', 'response code'])
-                # failed_entries.append(row)
-                i += 1
+        csv_data = [row for row in csv_r]
+    return csv_data
+
+
+def load_csv_to_db(csv_data, server, authkey, dry_run=True):
+    """Unlike previous version this defaults to dry_run since it's
+    probably safer.
+    """
+    entrynames = csv_data[0]
+    failed_entries = []
+    for row in csv_data[1:]:
+        # Print dry run results if no server address
+        if not server:
+            dry_run = True
+            server = '0.0.0.0'
+        res_code, postdata = send_entry(
+            server, row, entrynames, dry_run, authkey)
+        if res_code != 200 and res_code != 201:  # STATUS CODE not OK
+            row.extend([postdata, res_code])
+            failed_entries.append(row)
     return failed_entries
 
 
@@ -72,8 +76,10 @@ def main(argv):
               "Only printing results locally. Use the -h arg if you don't "
               "know what this means.\n")
     authkey = auth(argv.auth_username, argv.auth_password, argv.auth_api)
-    failed_entries = parse_csv(
-        argv.csv_path, argv.server_address, authkey, argv.dry_run)
+
+    csv_data = parse_csv_to_memory(argv.csv_path)
+    failed_entries = load_csv_to_db(
+        csv_data, argv.server_address, authkey, argv.dry_run)
 
     total_failed_entries = len(failed_entries)
     if total_failed_entries > 1:
