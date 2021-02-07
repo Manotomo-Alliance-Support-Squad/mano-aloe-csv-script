@@ -34,7 +34,7 @@ def load_csv_to_db(csv_data, server, authkey, dry_run=True):
     entrynames = csv_data[0]
     failed_entries = []
     for row in csv_data[1:]:
-        # Print dry run results if no server address
+        # Do a dry run if no server address
         if not server:
             dry_run = True
             server = '0.0.0.0'
