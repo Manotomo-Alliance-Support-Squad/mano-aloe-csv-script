@@ -1,13 +1,17 @@
 import argparse
 import csv
+import json
+
 import requests
+
 
 def auth(username, password, server):
     print(username)
-    postdata = {'username':username, 'password':password}
+    postdata = {'username': username, 'password': password}
     res = requests.post(server, json=postdata)
     print(res.text)
     return res.json()
+
 
 def write_fail_csv(entries, path):
     with open(path, 'w') as csv_f:
@@ -15,49 +19,79 @@ def write_fail_csv(entries, path):
         csv_w.writerows(entries)
 
 
-def parse_csv(csv_path, server, authkey, dry_run=False):
-    i = 0
-    entrynames = []
-    failed_entries = []
+def parse_csv_to_memory(csv_path):
+    """This probably doesn't need to be a function but it's separated for
+    testability and to do additional functionality when parsing CSVs.
+    """
     with open(csv_path) as csv_f:
         csv_r = csv.reader(csv_f, delimiter=',')
-        for row in csv_r:
-            if i > 0:
-                # Print dry run results if no server address
-                if not server:
-                    dry_run = True
-                    server = '0.0.0.0'
-                res_code, postdata = send_entry(
-                    server, row, entrynames, dry_run, authkey)
-                if res_code != 200 and res_code != 201:  # STATUS CODE not OK
-                    row.extend([postdata, res_code])
-                    failed_entries.append(row)
-            else:
-                entrynames = row
-                #row.extend(['postdata', 'response code'])
-                #failed_entries.append(row)
-                i += 1
+        csv_data = [row for row in csv_r]
+    return csv_data
+
+
+def load_csv_to_db(csv_data, entrymap, server, authkey, dry_run=False):
+    failed_entries = []
+    for entry in csv_data[1:]:
+        # Do a dry run if no server address
+        if not server:
+            dry_run = True
+            server = '0.0.0.0'
+        res_code, postdata = send_entry(
+            server, entry, entrymap, dry_run, authkey)
+        if res_code != 200 and res_code != 201:  # STATUS CODE not OK
+            entry.extend([postdata, res_code])
+            failed_entries.append(entry)
     return failed_entries
 
 
-def send_entry(server, entry, entrynames, dry_run, authkey):
-    url = server
-    postdata = {
-        #entrynames[0]: str(entry[0]),
-        entrynames[1]: str(entry[1]),
-        entrynames[2]: str(entry[2]),
-        entrynames[3]: str(entry[3]),
-        entrynames[4]: str(entry[4])
-        #TODO: Add a way to specify the columns we are sending. Sometimes the server will complain if we send an undefined column
-    }
+def build_entrymap(csv_column_names, column_map):
+    """Builds a db column name to csv column index mapping. If no mapping file
+    is given, we naively create the mapping using the order of the rows.
+
+    column_map provided should be {csv column name: db column name},
+    not including the primary ID.
+    """
+    # Naive approach, assumes the csv column names matches the db column names
+    db_content_names = csv_column_names[1:]
+    if column_map is None:
+        return {
+            column_name: index
+            for index, column_name in enumerate(db_content_names, start=1)
+        }
+
+    if len(column_map) != len(db_content_names):
+        print("WARNING: The db and csv column mapping file provided are "
+              "mismatched in length. db column names are: "
+              f"\n{db_content_names}\nThe provided column mapping "
+              f"generated the following maping: \n{column_map}")
+
+    # Using mapping provided by user to create the mapping
+    db_column_to_index_map = {}
+    for csv_column_name, db_column_name in column_map.items():
+        if csv_column_name not in db_content_names:
+            print(f"WARNING: {csv_column_name} not part of the db column "
+                  f"names for values {db_content_names}. This may be warning"
+                  "may be triggered due to including the primary key in the "
+                  "mapping file. To not have this warning printed, remove "
+                  "that mapping entry.")
+            continue
+        db_column_to_index_map[db_column_name] = csv_column_names.index(
+            csv_column_name)
+    return db_column_to_index_map
+
+
+def send_entry(server, entry, entrymap, dry_run, authkey):
+    postdata = {}
+    for column_name, csv_index in entrymap.items():
+        postdata[column_name] = entry[csv_index]
+
+    print(postdata)
     if not dry_run:
-        #auth_headers = "Authorization: JWT " + authkey['access_token']
         auth_headers = {'Authorization': 'JWT ' + authkey['access_token']}
-        res = requests.post(url, json=postdata, headers=auth_headers)
+        res = requests.post(server, json=postdata, headers=auth_headers)
         res_code = res.status_code
         print(res_code, res)
     else:
-        print(postdata)
         res_code = 200  # STATUS CODE OK
     return res_code, postdata
 
@@ -71,8 +105,22 @@ def main(argv):
               "Only printing results locally. Use the -h arg if you don't "
               "know what this means.\n")
     authkey = auth(argv.auth_username, argv.auth_password, argv.auth_api)
-    failed_entries = parse_csv(
-        argv.csv_path, argv.server_address, authkey, argv.dry_run)
+
+    csv_data = parse_csv_to_memory(argv.csv_path)
+
+    if argv.entrymap_path is not None:
+        with open(argv.entrymap_path, "r") as fp:
+            column_map = json.load(fp)
+    entrymap = build_entrymap(
+        csv_column_names=csv_data[0],
+        column_map=column_map)
+
+    failed_entries = load_csv_to_db(
+        csv_data=csv_data,
+        entrymap=entrymap,
+        server=argv.server_address,
+        authkey=authkey,
+        dry_run=argv.dry_run)
 
     total_failed_entries = len(failed_entries)
     if total_failed_entries > 1:
@@ -90,6 +138,11 @@ if __name__ == "__main__":
     parser.add_argument(
         '--csv_path', '-c', dest='csv_path', required=True,
         help='the path to the csv file')
+    parser.add_argument(
+        '--entrymap_path', '-e', dest='entrymap_path', required=False,
+        default=None,
+        help='the path to the JSON mapping file for db column names to csv'
+        ' column names')
     parser.add_argument(
         '--dry_run', '-d', dest='dry_run', action='store_true',
         help='performs a dry run locally when provided with a '
