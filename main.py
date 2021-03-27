@@ -36,10 +36,10 @@ def load_csv_to_db(csv_data, entrymap, server, authkey, dry_run=False):
         if not server:
             dry_run = True
             server = '0.0.0.0'
-        res_code, postdata = send_entry(
+        res_code, res_text, postdata = send_entry(
             server, entry, entrymap, dry_run, authkey)
-        if res_code != 200 and res_code != 201:  # STATUS CODE not OK
-            entry.extend([postdata, res_code])
+        if res_code not in {200, 201}:  # STATUS CODE not OK
+            entry.extend([postdata, res_text, res_code])
             failed_entries.append(entry)
     return failed_entries
 
@@ -90,10 +90,10 @@ def send_entry(server, entry, entrymap, dry_run, authkey):
         auth_headers = {'Authorization': 'JWT ' + authkey['access_token']}
         res = requests.post(server, json=postdata, headers=auth_headers)
         res_code = res.status_code
-        print(res_code, res)
+        print(res_code, res.text)
     else:
         res_code = 200  # STATUS CODE OK
-    return res_code, postdata
+    return res_code, res.text, postdata
 
 
 def main(argv):
