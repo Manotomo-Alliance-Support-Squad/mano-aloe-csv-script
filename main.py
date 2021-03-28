@@ -89,6 +89,11 @@ def build_entrymap(csv_column_names, column_map) -> Dict:
 def send_entry(server, entry, entrymap, dry_run, authkey):
     postdata = {}
     for column_name, csv_index in entrymap.items():
+        # Skip the entry if a column identifying duplicates exists
+        if column_name == DUPLICATE_ARG_NAME:
+            if entry[csv_index]:
+                return 200, None, None
+            continue
         postdata[column_name] = entry[csv_index]
 
     print(postdata)
