@@ -111,6 +111,9 @@ def main(argv):
     if argv.entrymap_path is not None:
         with open(argv.entrymap_path, "r") as fp:
             column_map = json.load(fp)
+    else:
+        column_map = None
+
     entrymap = build_entrymap(
         csv_column_names=csv_data[0],
         column_map=column_map)
@@ -151,6 +154,11 @@ if __name__ == "__main__":
         '--fail_csv_path', '-f', dest='fail_csv_path',
         default='./failed_entires.csv',
         help='the path to drop a csv with failed entries')
+    parser.add_argument(
+        '--duplicate_column', '-dc', dest='duplicate_column', required=False,
+        default=None,
+        help='The column name where duplicate is marked and skipped. If there '
+        'are any values within that column, it will count as a hit.')
     parser.add_argument(
         '--server', '-s', dest='server_address', required=False,
         help='the server address for the results to be uploaded')
