@@ -9,7 +9,7 @@ import requests
 DUPLICATE_ARG_NAME = "duplicate"
 
 
-def auth(username: str, password: str, server: str) -> Dict:
+def generate_authkey(username: str, password: str, server: str) -> Dict:
     print(username)
     postdata = {'username': username, 'password': password}
     res = requests.post(server, json=postdata)
@@ -106,21 +106,27 @@ def send_entry(
         auth_headers = {'Authorization': 'JWT ' + authkey['access_token']}
         res = requests.post(server, json=postdata, headers=auth_headers)
         res_code = res.status_code
-        print(res_code, res.text)
+        res_text = res.text
+        print(res_code, res_text)
     else:
         res_code = 200  # STATUS CODE OK
-    return res_code, res.text, postdata
+        res_text = "Dry run, no response text"
+    return res_code, res_text, postdata
 
 
 def main(argv):
-    if argv.dry_run:
-        print("\nThis is a dry run. No data will be loaded to server whether "
-              "a server_address has been provided or not.\n")
+    if not argv.dry_run:
+        authkey = generate_authkey(
+            argv.auth_username, argv.auth_password, argv.auth_api)
     elif not argv.server_address:
+        authkey = None
         print("\nWARNING: A server address was not provided in args. "
               "Only printing results locally. Use the -h arg if you don't "
               "know what this means.\n")
-    authkey = auth(argv.auth_username, argv.auth_password, argv.auth_api)
+    else:
+        authkey = None
+        print("\nThis is a dry run. No data will be loaded to server whether "
+              "a server_address has been provided or not.\n")
 
     csv_data = parse_csv_to_memory(argv.csv_path)
 
