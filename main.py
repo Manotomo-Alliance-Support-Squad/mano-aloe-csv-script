@@ -115,16 +115,15 @@ def send_entry(
 
 
 def main(argv):
+    authkey = None
     if not argv.dry_run:
         authkey = generate_authkey(
             argv.auth_username, argv.auth_password, argv.auth_api)
     elif not argv.server_address:
-        authkey = None
         print("\nWARNING: A server address was not provided in args. "
               "Only printing results locally. Use the -h arg if you don't "
               "know what this means.\n")
     else:
-        authkey = None
         print("\nThis is a dry run. No data will be loaded to server whether "
               "a server_address has been provided or not.\n")
 
