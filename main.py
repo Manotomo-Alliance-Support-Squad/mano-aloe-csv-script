@@ -1,7 +1,7 @@
 import argparse
 import csv
 import json
-from typing import Dict
+from typing import Dict, List, Tuple
 
 import requests
 
@@ -9,7 +9,7 @@ import requests
 DUPLICATE_ARG_NAME = "duplicate"
 
 
-def auth(username, password, server):
+def auth(username: str, password: str, server: str) -> Dict:
     print(username)
     postdata = {'username': username, 'password': password}
     res = requests.post(server, json=postdata)
@@ -17,13 +17,13 @@ def auth(username, password, server):
     return res.json()
 
 
-def write_fail_csv(entries, path):
+def write_fail_csv(entries: List, path: str):
     with open(path, 'w') as csv_f:
         csv_w = csv.writer(csv_f, delimiter=',')
         csv_w.writerows(entries)
 
 
-def parse_csv_to_memory(csv_path):
+def parse_csv_to_memory(csv_path: str) -> List[List]:
     """This probably doesn't need to be a function but it's separated for
     testability and to do additional functionality when parsing CSVs.
     """
@@ -33,7 +33,10 @@ def parse_csv_to_memory(csv_path):
     return csv_data
 
 
-def load_csv_to_db(csv_data, entrymap, server, authkey, dry_run=False):
+def load_csv_to_db(
+    csv_data: List[List], entrymap: Dict, server: str, authkey: Dict,
+    dry_run: bool = False
+) -> List[List]:
     failed_entries = []
     for entry in csv_data[1:]:
         # Do a dry run if no server address
@@ -48,7 +51,7 @@ def load_csv_to_db(csv_data, entrymap, server, authkey, dry_run=False):
     return failed_entries
 
 
-def build_entrymap(csv_column_names, column_map) -> Dict:
+def build_entrymap(csv_column_names: List, column_map: Dict) -> Dict:
     """Builds a db column name to csv column index mapping. If no mapping file
     is given, we naively create the mapping using the order of the rows.
 
@@ -86,7 +89,9 @@ def build_entrymap(csv_column_names, column_map) -> Dict:
     return db_column_to_index_map
 
 
-def send_entry(server, entry, entrymap, dry_run, authkey):
+def send_entry(
+    server: str, entry: List, entrymap: Dict, dry_run: bool, authkey: Dict
+) -> Tuple[int, str, Dict]:
     postdata = {}
     for column_name, csv_index in entrymap.items():
         # Skip the entry if a column identifying duplicates exists
