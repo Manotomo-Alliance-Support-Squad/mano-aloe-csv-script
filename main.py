@@ -1,8 +1,12 @@
 import argparse
 import csv
 import json
+from typing import Dict
 
 import requests
+
+
+DUPLICATE_ARG_NAME = "duplicate"
 
 
 def auth(username, password, server):
@@ -44,12 +48,14 @@ def load_csv_to_db(csv_data, entrymap, server, authkey, dry_run=False):
     return failed_entries
 
 
-def build_entrymap(csv_column_names, column_map):
+def build_entrymap(csv_column_names, column_map) -> Dict:
     """Builds a db column name to csv column index mapping. If no mapping file
     is given, we naively create the mapping using the order of the rows.
 
     column_map provided should be {csv column name: db column name},
     not including the primary ID.
+
+    The function returns {db column name: csv column index}
     """
     # Naive approach, assumes the csv column names matches the db column names
     db_content_names = csv_column_names[1:]
@@ -111,6 +117,8 @@ def main(argv):
     if argv.entrymap_path is not None:
         with open(argv.entrymap_path, "r") as fp:
             column_map = json.load(fp)
+        if argv.duplicate_column_name is not None:
+            column_map[argv.duplicate_column_name] = DUPLICATE_ARG_NAME
     else:
         column_map = None
 
@@ -155,8 +163,8 @@ if __name__ == "__main__":
         default='./failed_entires.csv',
         help='the path to drop a csv with failed entries')
     parser.add_argument(
-        '--duplicate_column', '-dc', dest='duplicate_column', required=False,
-        default=None,
+        '--duplicate_column_name', '-dc', dest='duplicate_column_name',
+        required=False, default=None,
         help='The column name where duplicate is marked and skipped. If there '
         'are any values within that column, it will count as a hit.')
     parser.add_argument(
